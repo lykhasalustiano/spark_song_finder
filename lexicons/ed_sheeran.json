@@ -1,0 +1,29 @@
+{
+    "artist": "Ed Sheeran",
+    "songs": [
+      {
+        "title": "Shape of You",
+        "album": "÷ (Divide)",
+        "year": 2017,
+        "lyrics": "The club isn't the best place to find a lover\nSo the bar is where I go\nMe and my friends at the table doing shots"
+      },
+      {
+        "title": "Perfect",
+        "album": "÷ (Divide)",
+        "year": 2017,
+        "lyrics": "I found a love for me\nDarling, just dive right in\nAnd follow my lead"
+      },
+      {
+        "title": "Thinking Out Loud",
+        "album": "x (Multiply)",
+        "year": 2014,
+        "lyrics": "When your legs don't work like they used to before\nAnd I can't sweep you off of your feet"
+      },
+      {
+        "title": "Bad Habits",
+        "album": "=",
+        "year": 2021,
+        "lyrics": "Every time you come around, you know I can't say no\nEvery time the sun goes down, I let you take control"
+      }
+    ]
+  }
