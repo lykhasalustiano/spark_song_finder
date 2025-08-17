@@ -123,7 +123,6 @@ class SongFinderUI:
         ]
         return canvas.create_polygon(points, smooth=True, **kwargs)
 
-# In the SongFinderUI class, modify the on_voice_search method:
     def on_voice_search(self, event):
         # Show listening state
         self.search_entry.delete(0, tk.END)
@@ -158,6 +157,7 @@ class SongFinderUI:
         self.song_canvases = []
 
         results = self.song_finder.search_songs(query)
+        print(f"Search for '{query}' returned {len(results)} results")  # Debug
         
         if not results:
             self.show_no_results()
@@ -233,6 +233,12 @@ class SongFinderUI:
                                   fill="white",
                                   anchor="w")
             
+            # Store reference to the song
+            song_canvas.song_data = song
+            
+            # Bind click event
+            song_canvas.bind("<Button-1>", lambda e, s=song: self.on_song_click(s))
+            
             # Bind hover effect
             song_canvas.bind("<Enter>", lambda e, c=song_canvas, r=rect_id: 
                            self.on_enter(e, c, r))
@@ -240,6 +246,10 @@ class SongFinderUI:
                            self.on_leave(e, c, r))
             
             self.song_canvases.append(song_canvas)
+
+    def on_song_click(self, song):
+        """Handle song selection"""
+        self.update_suggestion_box(song)
 
     def on_enter(self, event, canvas, rect_id):
         canvas.itemconfig(rect_id, fill="#808080")

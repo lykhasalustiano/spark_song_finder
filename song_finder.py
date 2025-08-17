@@ -6,22 +6,21 @@ from difflib import get_close_matches
 import re
 from collections import defaultdict
 import time
+from core.lexicon import LexiconManager
+
+
 
 class SongFinder:
     def __init__(self):
-        # Create lexicons directory if it doesn't exist
-        if not os.path.exists('lexicons'):
-            os.makedirs('lexicons')
-            
-        self.lexicon_files = glob.glob(os.path.join('lexicons', '*_lexicon.json'))
-        self.song_data = self.load_all_lexicons()
+        self.lexicon_manager = LexiconManager()
+        self.song_data = self.lexicon_manager.load_all_lexicons()
         
-        # Initialize voice recognition with better error handling
+        # Initialize voice recognition
         self.recognizer = sr.Recognizer()
         self.recognizer.dynamic_energy_threshold = True
         self.microphone = self._initialize_microphone()
         
-        # Build n-gram index for better search
+        # Build search index
         self.ngram_index = self._build_ngram_index()
 
     def _initialize_microphone(self):

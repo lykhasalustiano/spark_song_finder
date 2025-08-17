@@ -2,6 +2,7 @@ from difflib import get_close_matches
 import re
 from collections import defaultdict
 
+
 class EnhancedSongSearcher:
     def __init__(self, song_data):
         self.song_data = song_data
@@ -43,48 +44,3 @@ class EnhancedSongSearcher:
         
         return [song for (score, song) in sorted(results, reverse=True)]
     
-    def search_songs(self, query):
-        """Search songs with multi-stage matching"""
-        if not query:
-            return []
-        
-        query = query.lower()
-        results = []
-        
-        # Stage 1: Exact matches
-        for song in self.song_data["songs"]:
-            if (query in song["artist"].lower() or 
-                query in song["title"].lower() or 
-                query in song["lyrics"].lower()):
-                results.append(song)
-        
-        if results:
-            return results
-        
-        # Stage 2: N-gram matching
-        ngram_results = self._ngram_search(query)
-        if ngram_results:
-            return ngram_results
-        
-        # Stage 3: Fuzzy matching
-        all_terms = []
-        song_map = {}
-        for song in self.song_data["songs"]:
-            terms = [
-                song["title"].lower(),
-                song["artist"].lower(),
-                *song["lyrics"].lower().split()[:10]
-            ]
-            for term in terms:
-                all_terms.append(term)
-                song_map[term] = song
-        
-        close_matches = get_close_matches(query, all_terms, n=5, cutoff=0.4)
-        seen_songs = set()
-        for match in close_matches:
-            song = song_map[match]
-            if song["title"] not in seen_songs:
-                results.append(song)
-                seen_songs.add(song["title"])
-        
-        return results
