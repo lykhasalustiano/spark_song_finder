@@ -32,7 +32,7 @@ class SongFinderUI:
         border_line.pack(fill="x", side="top")
 
         # LOGO
-        logo_path = r"C:\Users\lykha\spark_song_finder\icon\logo.png"
+        logo_path = r"icon/logo.png"
         logo_img = Image.open(logo_path).resize((80, 90), Image.LANCZOS)
         self.logo_icon = ImageTk.PhotoImage(logo_img)
         logo_label = tk.Label(header, image=self.logo_icon, bg="#191414")
@@ -46,7 +46,7 @@ class SongFinderUI:
         self.create_rounded_rect(search_canvas, 0, 0, 280, 36, r=18, fill="#6D6D6D")
 
         # Search icon
-        icon_path = r"C:\Users\lykha\spark_song_finder\icon\photo_2025-08-13_23-24-30-removebg-preview.png"
+        icon_path = r"icon/search-bar.png"
         icon_img = Image.open(icon_path).resize((20, 20), Image.LANCZOS)
         self.search_icon = ImageTk.PhotoImage(icon_img)
         search_canvas.create_image(15, 18, image=self.search_icon)
@@ -76,7 +76,7 @@ class SongFinderUI:
         self.search_entry.bind("<FocusOut>", on_focus_out)
 
         # Microphone icon
-        mic_path = r"C:\Users\lykha\spark_song_finder\icon\microphone-removebg-preview.png"
+        mic_path = r"icon/microphone.png"
         mic_img = Image.open(mic_path).resize((26, 26), Image.LANCZOS)
         self.mic_icon = ImageTk.PhotoImage(mic_img)
         self.mic_label = tk.Label(header, image=self.mic_icon, bg="#191414")
