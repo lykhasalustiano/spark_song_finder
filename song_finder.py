@@ -61,7 +61,7 @@ class SongFinder:
         index = defaultdict(list)
         for song_idx, song in enumerate(self.song_data["songs"]):
             # Index title, artist, and first line of lyrics
-            for text in [song['title'], song['artist'], song['lyrics'].split('\n')[0]]:
+            for text in [song['Title'], song['Artist'], song['Lyric'].split('\n')[0]]:
                 text = text.lower()
                 words = re.findall(r'\w+', text)
                 for i in range(len(words) - n + 1):
@@ -150,9 +150,9 @@ class SongFinder:
         
         # Stage 1: Exact matches
         for song in self.song_data["songs"]:
-            if (query in song["artist"].lower() or 
-                query in song["title"].lower() or 
-                query in song["lyrics"].lower()):
+            if (query in song["Artist"].lower() or 
+                query in song["Title"].lower() or 
+                query in song["Lyric"].lower()):
                 results.append(song)
         
         if results:

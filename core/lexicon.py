@@ -30,8 +30,8 @@ class LexiconManager:
                 with open(file_path, 'r', encoding='utf-8') as f:
                     artist_data = json.load(f)
                     # Add artist to each song
-                    for song in artist_data.get("songs", []):
-                        song["artist"] = artist_data["artist"]
+                    for song in artist_data:
+                        # song["Artist"] = song["Artist"]
                         combined_data["songs"].append(song)
             except Exception as e:
                 print(f"Error loading {file_path}: {e}")

@@ -178,19 +178,19 @@ class SongFinderUI:
         
         # Song info
         self.suggestion_canvas.create_text(100, 40, 
-                                         text=song['title'], 
+                                         text=song['Title'], 
                                          font=("Arial", 16, "bold"), 
                                          fill="white", 
                                          anchor="w")
         
         self.suggestion_canvas.create_text(100, 70, 
-                                         text=f"by {song['artist']}", 
+                                         text=f"by {song['Artist']}", 
                                          font=("Arial", 12), 
                                          fill="#B3B3B3", 
                                          anchor="w")
         
         # Fix for f-string with newline
-        lyrics_lines = song['lyrics'].split('\n')
+        lyrics_lines = song['Lyric'].split('\n')
         first_line = lyrics_lines[0][:60] + "..." if lyrics_lines else ""
         self.suggestion_canvas.create_text(100, 100, 
                                          text=first_line, 
@@ -228,7 +228,7 @@ class SongFinderUI:
             
             # Song info
             song_canvas.create_text(20, 20, 
-                                  text=f"{song['title']} - {song['artist']}", 
+                                  text=f"{song['Title']} - {song['Artist']}", 
                                   font=("Arial", 12), 
                                   fill="white",
                                   anchor="w")
