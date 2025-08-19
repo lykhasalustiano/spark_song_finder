@@ -1,67 +1,79 @@
-import speech_recognition as sr
+import whisper
+import pyaudio
+import numpy as np
 import json
-import glob
-import os
 from difflib import get_close_matches
 import re
 from collections import defaultdict
 import time
 from core.lexicon import LexiconManager
 
-
-
 class SongFinder:
-    def __init__(self):
+    def __init__(self, whisper_model_size="base"):
         self.lexicon_manager = LexiconManager()
         self.song_data = self.lexicon_manager.load_all_lexicons()
         
-        # Initialize voice recognition
-        self.recognizer = sr.Recognizer()
-        self.recognizer.dynamic_energy_threshold = True
-        self.microphone = self._initialize_microphone()
+        # Initialize Whisper model
+        self.whisper_model = whisper.load_model(whisper_model_size)
+        
+        # Initialize PyAudio for voice recording
+        self.audio = pyaudio.PyAudio()
+        self.sample_rate = 16000
+        self.chunk_size = 1024
+        self.channels = 1
+        self.format = pyaudio.paInt16
         
         # Build search index
         self.ngram_index = self._build_ngram_index()
 
-    def _initialize_microphone(self):
-        """Initialize microphone with retry logic"""
-        max_retries = 3
-        for attempt in range(max_retries):
-            try:
-                mic = sr.Microphone()
-                print("Microphone initialized successfully")
-                return mic
-            except Exception as e:
-                print(f"Microphone initialization attempt {attempt + 1} failed: {e}")
-                if attempt < max_retries - 1:
-                    time.sleep(1)
-        print("Could not initialize microphone after multiple attempts")
-        return None
+    def record_audio(self, record_seconds=5):
+        """Record audio using PyAudio directly"""
+        try:
+            stream = self.audio.open(
+                format=self.format,
+                channels=self.channels,
+                rate=self.sample_rate,
+                input=True,
+                frames_per_buffer=self.chunk_size
+            )
+            
+            print("Listening... (speak now)")
+            frames = []
+            
+            for _ in range(0, int(self.sample_rate / self.chunk_size * record_seconds)):
+                data = stream.read(self.chunk_size)
+                frames.append(data)
+            
+            print("Recording finished")
+            stream.stop_stream()
+            stream.close()
+            
+            # Convert to numpy array for Whisper
+            audio_data = np.frombuffer(b''.join(frames), dtype=np.int16)
+            audio_data = audio_data.astype(np.float32) / 32768.0  # Normalize to [-1, 1]
+            
+            return audio_data
+            
+        except Exception as e:
+            print(f"Error recording audio: {e}")
+            return None
 
     def load_all_lexicons(self):
-        all_songs = {"songs": []}
-        if not self.lexicon_files:
-            print("No lexicon files found in lexicons/ folder")
-            print("Please add artist lexicon files in the format: lexicons/<artist>_lexicon.json")
-            return all_songs
-        
-        for file in self.lexicon_files:
-            try:
-                with open(file, 'r', encoding='utf-8') as f:
-                    artist_data = json.load(f)
-                    for song in artist_data.get("songs", []):
-                        song["artist"] = artist_data["artist"]
-                        all_songs["songs"].append(song)
-            except Exception as e:
-                print(f"Error loading {file}: {e}")
-        return all_songs
+        """Load all lexicons through the manager"""
+        return self.lexicon_manager.load_all_lexicons()
 
     def _build_ngram_index(self, n=3):
         """Build an n-gram index for better fuzzy matching"""
         index = defaultdict(list)
         for song_idx, song in enumerate(self.song_data["songs"]):
             # Index title, artist, and first line of lyrics
-            for text in [song['Title'], song['Artist'], song['Lyric'].split('\n')[0]]:
+            texts_to_index = [
+                song.get('Title', ''),
+                song.get('Artist', ''),
+                song.get('Lyric', '').split('\n')[0] if song.get('Lyric') else ''
+            ]
+            
+            for text in texts_to_index:
                 text = text.lower()
                 words = re.findall(r'\w+', text)
                 for i in range(len(words) - n + 1):
@@ -93,52 +105,27 @@ class SongFinder:
         return [song for (score, song) in sorted(results, reverse=True)]
 
     def listen_for_search(self):
-        if not self.microphone:
-            print("Microphone not available for voice search")
-            return None
-            
-        print("Listening for your song search... (speak now)")
+        """Capture voice input using Whisper with direct PyAudio recording"""
+        print("Listening for your song search...")
+        
         try:
-            with self.microphone as source:
-                # Longer adjustment for better noise handling
-                self.recognizer.adjust_for_ambient_noise(source, duration=2)
-                print("Speak now...")
-                audio = self.recognizer.listen(source, timeout=5, phrase_time_limit=5)
+            # Record audio
+            audio_data = self.record_audio(record_seconds=5)
+            if audio_data is None:
+                return None
             
-            print("Processing your speech...")
-            query = self.recognizer.recognize_google(audio)
+            print("Processing your speech with Whisper...")
+            
+            # Transcribe with Whisper
+            result = self.whisper_model.transcribe(audio_data, language="en")
+            query = result["text"].strip()
+            
             print(f"You said: {query}")
-            return self.expand_voice_query(query)
-        except sr.WaitTimeoutError:
-            print("Listening timed out. Please try again.")
-            return None
-        except sr.UnknownValueError:
-            print("Sorry, I didn't catch that. Please try again.")
-            return None
-        except sr.RequestError as e:
-            print(f"Could not request results from Google Speech Recognition service; {e}")
-            return None
+            return query if query else None
+            
         except Exception as e:
             print(f"Unexpected error during voice recognition: {e}")
             return None
-
-    def expand_voice_query(self, query):
-        """Expand voice queries for better matching"""
-        if not query:
-            return query
-            
-        # Simple expansion - can be enhanced further
-        expansions = {
-            "tay swift": "taylor swift",
-            "ed sheer": "ed sheeran",
-            "shape of": "shape of you",
-            "love store": "love story",
-            "blank sp": "blank space",
-            "shake it": "shake it off",
-            "think out": "thinking out loud",
-            "bad hab": "bad habits"
-        }
-        return expansions.get(query.lower(), query)
 
     def search_songs(self, query):
         """Multi-stage search with exact, n-gram, and fuzzy matching"""
@@ -150,9 +137,9 @@ class SongFinder:
         
         # Stage 1: Exact matches
         for song in self.song_data["songs"]:
-            if (query in song["Artist"].lower() or 
-                query in song["Title"].lower() or 
-                query in song["Lyric"].lower()):
+            if (query in song.get("Title", "").lower() or 
+                query in song.get("Artist", "").lower() or 
+                query in song.get("Lyric", "").lower()):
                 results.append(song)
         
         if results:
@@ -168,20 +155,28 @@ class SongFinder:
         song_map = {}
         for song in self.song_data["songs"]:
             terms = [
-                song["title"].lower(),
-                song["artist"].lower(),
-                *song["lyrics"].lower().split()[:10]
+                song.get("Title", "").lower(),
+                song.get("Artist", "").lower(),
+                *song.get("Lyric", "").lower().split()[:10]
             ]
             for term in terms:
-                all_terms.append(term)
-                song_map[term] = song
+                if term:  # Skip empty terms
+                    all_terms.append(term)
+                    song_map[term] = song
         
-        close_matches = get_close_matches(query, all_terms, n=5, cutoff=0.4)
+        close_matches = get_close_matches(query, all_terms, n=10, cutoff=0.3)
         seen_songs = set()
+        results = []
         for match in close_matches:
             song = song_map[match]
-            if song["title"] not in seen_songs:
+            song_id = f"{song.get('Title', '')}_{song.get('Artist', '')}"
+            if song_id not in seen_songs:
                 results.append(song)
-                seen_songs.add(song["title"])
+                seen_songs.add(song_id)
         
         return results
+    
+    def __del__(self):
+        """Clean up PyAudio resources"""
+        if hasattr(self, 'audio'):
+            self.audio.terminate()

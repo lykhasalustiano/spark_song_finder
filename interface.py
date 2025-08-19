@@ -134,11 +134,10 @@ class SongFinderUI:
         query = self.song_finder.listen_for_search()
         
         if query:
-            # Expand query for better matching
-            expanded_query = self.song_finder.expand_voice_query(query)
+            # Use the raw query directly - your search algorithms will handle it
             self.search_entry.delete(0, tk.END)
-            self.search_entry.insert(0, expanded_query)
-            self.display_results(expanded_query)
+            self.search_entry.insert(0, query)
+            self.display_results(query)
         else:
             self.search_entry.delete(0, tk.END)
             self.search_entry.insert(0, "Could not understand voice input")

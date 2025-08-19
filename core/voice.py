@@ -1,54 +1,80 @@
-import speech_recognition as sr
+import whisper
+import pyaudio
+import wave
+import numpy as np
 import time
+import tempfile
+import os
 
 class VoiceRecognizer:
-    def __init__(self):
-        self.recognizer = sr.Recognizer()
-        self.recognizer.dynamic_energy_threshold = True
-        self.microphone = None
-        self._initialize_microphone()
+    def __init__(self, model_size="base"):
+        """ 
+        Initialize Whisper voice recognizer
+        model_size: "tiny", "base", "small", "medium", "large"
+        """
+        self.model = whisper.load_model(model_size)
+        self.audio = pyaudio.PyAudio()
+        self.sample_rate = 16000
+        self.chunk_size = 1024
+        self.channels = 1
+        self.format = pyaudio.paInt16
     
-    def _initialize_microphone(self):
-        """Initialize microphone with retry logic"""
-        max_retries = 3
-        for attempt in range(max_retries):
-            try:
-                self.microphone = sr.Microphone()
-                print("Microphone initialized successfully")
-                return
-            except Exception as e:
-                print(f"Microphone initialization attempt {attempt + 1} failed: {e}")
-                if attempt < max_retries - 1:
-                    time.sleep(1)
-        print("Could not initialize microphone after multiple attempts")
+    def record_audio(self, record_seconds=5):
+        """Record audio using PyAudio directly"""
+        try:
+            stream = self.audio.open(
+                format=self.format,
+                channels=self.channels,
+                rate=self.sample_rate,
+                input=True,
+                frames_per_buffer=self.chunk_size
+            )
+            
+            print("Listening... (speak now)")
+            frames = []
+            
+            for _ in range(0, int(self.sample_rate / self.chunk_size * record_seconds)):
+                data = stream.read(self.chunk_size)
+                frames.append(data)
+            
+            print("Recording finished")
+            stream.stop_stream()
+            stream.close()
+            
+            # Convert to numpy array for Whisper
+            audio_data = np.frombuffer(b''.join(frames), dtype=np.int16)
+            audio_data = audio_data.astype(np.float32) / 32768.0  # Normalize to [-1, 1]
+            
+            return audio_data
+            
+        except Exception as e:
+            print(f"Error recording audio: {e}")
+            return None
     
     def listen_for_search(self):
-        """Capture voice input with improved error handling"""
-        if not self.microphone:
-            print("Microphone not available for voice search")
-            return None
-            
-        print("Listening for your song search... (speak now)")
+        """Capture voice input using Whisper with direct PyAudio recording"""
+        print("Listening for your song search...")
+        
         try:
-            with self.microphone as source:
-                # Longer adjustment for better noise handling
-                self.recognizer.adjust_for_ambient_noise(source, duration=2)
-                print("Speak now...")
-                audio = self.recognizer.listen(source, timeout=5, phrase_time_limit=5)
+            # Record audio
+            audio_data = self.record_audio(record_seconds=5)
+            if audio_data is None:
+                return None
             
-            print("Processing your speech...")
-            query = self.recognizer.recognize_google(audio)
+            print("Processing your speech with Whisper...")
+            
+            # Transcribe with Whisper
+            result = self.model.transcribe(audio_data, language="en")
+            query = result["text"].strip()
+            
             print(f"You said: {query}")
-            return query
-        except sr.WaitTimeoutError:
-            print("Listening timed out. Please try again.")
-            return None
-        except sr.UnknownValueError:
-            print("Sorry, I didn't catch that. Please try again.")
-            return None
-        except sr.RequestError as e:
-            print(f"Could not request results from Google Speech Recognition service; {e}")
-            return None
+            return query if query else None
+            
         except Exception as e:
             print(f"Unexpected error during voice recognition: {e}")
             return None
+    
+    def __del__(self):
+        """Clean up PyAudio resources"""
+        if hasattr(self, 'audio'):
+            self.audio.terminate()
